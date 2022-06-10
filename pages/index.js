@@ -4,7 +4,12 @@ const HomePage = () => {
 	const [gameState, setState] = useState({
 		status: "Playing",
 		currentTurn: "X",
-		isGamesOver: false,
+		isGameOver: false,
+		gameWinner: "",
+		players: {
+			human: "X",
+			computer: "O",
+		},
 		boardState: {
 			0: "",
 			1: "",
@@ -21,7 +26,7 @@ const HomePage = () => {
 	const handleCheckWin = () => {
 		const possibilities = [
 			[0, 1, 2],
-			[0, 4, 7],
+			[8, 4, 0],
 			[0, 5, 9],
 			[3, 4, 5],
 			[1, 4, 7],
@@ -29,51 +34,130 @@ const HomePage = () => {
 			[2, 4, 6],
 			[2, 1, 0],
 			[6, 7, 8],
+			[0, 3, 6],
 		];
-		const boxTextValues = gameState.boardState;
-		possibilities.forEach((location) => {
-			const condition =
-				boxTextValues[location[0]] === boxTextValues[location[1]] &&
-				boxTextValues[location[2]] === boxTextValues[location[1]] &&
-				boxTextValues[location[0]] !== "" &&
-				boxTextValues[location[1]] !== "" &&
-				boxTextValues[location[2]] !== "";
-
-			if (condition) {
-				setState((gameStateVals) => ({
-					...gameStateVals,
-					isGamesOver: true,
-				}));
+		const { boardState } = gameState;
+		for (let i = 0; i < possibilities.length; i++) {
+			const [a, b, c] = possibilities[i];
+			if (
+				boardState[a] &&
+				boardState[a] === boardState[b] &&
+				boardState[a] === boardState[c] &&
+				boardState[a] !== "" &&
+				boardState[b] !== "" &&
+				boardState[c] !== ""
+			) {
+				setState({
+					...gameState,
+					isGameOver: true,
+					status: `${boardState[a]} is the winner!`,
+				});
+				return boardState[a];
 			}
-		});
+		}
 	};
 
-	const handleChange = (turn) => {
-		turn === "X" ? "O" : "X";
+	useEffect(() => {
+		const winner = handleCheckWin();
+		setState({
+			...gameState,
+			gameWinner: winner,
+		});
+		for (let i = 0; i < Object.values(gameState.boardState).length; i++) {
+			const element = Object.values(gameState.boardState)[i];
+			if (element === "") {
+				return;
+			} else if (i === 8) {
+				setState({
+					...gameState,
+					isGameOver: true,
+					status: "Draw",
+				});
+			}
+		}
+	});
+
+	const handleTurnChange = () => {
 		setState((gameStateVals) => ({
 			...gameStateVals,
-			currentTurn: turn === "X" ? "O" : "X",
+			currentTurn:
+				gameStateVals.currentTurn === gameState.players.human
+					? gameState.players.computer
+					: gameState.players.human,
 		}));
-		return turn;
 	};
 
 	const handleTurnUse = (e) => {
-		e.preventDefault();
 		if (e.target.innerText === "") {
-			const turn = handleChange(gameState.currentTurn);
 			setState((gameStateVals) => ({
 				...gameStateVals,
 				boardState: {
 					...gameStateVals.boardState,
-					[e.target.id]: turn,
+					[e.target.id]: gameStateVals.currentTurn,
 				},
 			}));
+			if (!gameState.isGameOver) {
+				handleTurnChange();
+			}
 		} else {
 			return;
 		}
 	};
 
-	const minimax = () => {};
+	const handleOnClick = (e) => {
+		e.preventDefault();
+		if (!gameState.isGameOver) {
+			handleTurnUse(e);
+		} else {
+			alert("Game is over!");
+		}
+	};
+
+	// const minimax = (board, player) => {
+	// 	const availableSpots = Object.keys(board).filter(
+	// 		(key) => board[key] === ""
+	// 	);
+	// 	if (checkWin(board, "X")) {
+	// 		return 1;
+	// 	} else if (checkWin(board, "O")) {
+	// 		return -1;
+	// 	} else if (availableSpots.length === 0) {
+	// 		return 0;
+	// 	}
+
+	// 	let moves = [];
+	// 	for (let i = 0; i < availableSpots.length; i++) {
+	// 		let move = {};
+	// 		move.index = board.indexOf(availableSpots[i]);
+	// 		board[move.index] = player;
+	// 		if (player === "O") {
+	// 			move.score = minimax(board, "X");
+	// 		} else {
+	// 			move.score = minimax(board, "O");
+	// 		}
+	// 		board[move.index] = "";
+	// 		moves.push(move);
+	// 	}
+	// 	let bestMove;
+	// 	if (player === "O") {
+	// 		let bestScore = -10000;
+	// 		for (let i = 0; i < moves.length; i++) {
+	// 			if (moves[i].score > bestScore) {
+	// 				bestScore = moves[i].score;
+	// 				bestMove = i;
+	// 			}
+	// 		}
+	// 	} else {
+	// 		let bestScore = 10000;
+	// 		for (let i = 0; i < moves.length; i++) {
+	// 			if (moves[i].score < bestScore) {
+	// 				bestScore = moves[i].score;
+	// 				bestMove = i;
+	// 			}
+	// 		}
+	// 	}
+	// 	return moves[bestMove].index;
+	// };
 
 	return (
 		<main>
@@ -85,9 +169,11 @@ const HomePage = () => {
 					<div>
 						<strong>Status</strong>: <span>{gameState.status}</span>
 					</div>
-					<div>
-						<strong>Turn</strong>: <span>{gameState.currentTurn}</span>
-					</div>
+					{!gameState.isGameOver && (
+						<div>
+							<strong>Turn</strong>: <span>{gameState.currentTurn}</span>
+						</div>
+					)}
 				</div>
 			</div>
 			<div className="playArea container mx-auto max-h-fit">
@@ -95,63 +181,63 @@ const HomePage = () => {
 					<div className="board grid grid-cols-3 h-[30rem] w-[30rem] p-5">
 						<div
 							id="0"
-							onClick={handleTurnUse}
+							onClick={handleOnClick}
 							className="box border-2 border-l-0 text-5xl border-t-0 flex justify-center items-center text-center"
 						>
 							<span className="piece absolute">{gameState.boardState[0]}</span>
 						</div>
 						<div
 							id="1"
-							onClick={handleTurnUse}
+							onClick={handleOnClick}
 							className="box border-2 text-5xl border-t-0 flex justify-center items-center text-center"
 						>
 							<span className="piece absolute">{gameState.boardState[1]}</span>
 						</div>
 						<div
 							id="2"
-							onClick={handleTurnUse}
+							onClick={handleOnClick}
 							className="box border-2 border-r-0 text-5xl border-t-0 flex justify-center items-center text-center"
 						>
 							<span className="piece absolute">{gameState.boardState[2]}</span>
 						</div>
 						<div
 							id="3"
-							onClick={handleTurnUse}
+							onClick={handleOnClick}
 							className="box border-2 border-l-0 text-5xl flex justify-center items-center text-center"
 						>
 							<span className="piece absolute">{gameState.boardState[3]}</span>
 						</div>
 						<div
 							id="4"
-							onClick={handleTurnUse}
+							onClick={handleOnClick}
 							className="box border-2 text-5xl flex justify-center items-center text-center"
 						>
 							<span className="piece absolute">{gameState.boardState[4]}</span>
 						</div>
 						<div
 							id="5"
-							onClick={handleTurnUse}
+							onClick={handleOnClick}
 							className="box border-2 text-5xl border-r-0 flex justify-center items-center text-center"
 						>
 							<span className="piece absolute">{gameState.boardState[5]}</span>
 						</div>
 						<div
 							id="6"
-							onClick={handleTurnUse}
+							onClick={handleOnClick}
 							className="box border-2 text-5xl border-l-0 border-b-0 flex justify-center items-center text-center"
 						>
 							<span className="piece absolute">{gameState.boardState[6]}</span>
 						</div>
 						<div
 							id="7"
-							onClick={handleTurnUse}
+							onClick={handleOnClick}
 							className="box border-2 text-5xl border-b-0 flex justify-center items-center text-center"
 						>
 							<span className="piece absolute">{gameState.boardState[7]}</span>
 						</div>
 						<div
 							id="8"
-							onClick={handleTurnUse}
+							onClick={handleOnClick}
 							className="box border-2 text-5xl border-r-0 border-b-0 flex justify-center items-center text-center"
 						>
 							<span className="piece absolute">{gameState.boardState[8]}</span>
